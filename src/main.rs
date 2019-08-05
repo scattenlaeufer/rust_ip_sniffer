@@ -1,6 +1,7 @@
 use std::env;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::process;
 
 #[derive(Debug)]
 struct Arguments {
@@ -31,6 +32,7 @@ impl Arguments {
             } else if flag.contains("-h") || flag.contains("--help") {
                 return Err("too many arguments");
             } else if flag.contains("-j") {
+                // TODO Handle -j with args.len() == 3
                 let ipaddr = match IpAddr::from_str(&args[3]) {
                     Ok(s) => s,
                     Err(_) => return Err("not a valid IPADDR; must be IPv4 or IPv6"),
@@ -54,5 +56,14 @@ impl Arguments {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
-    let arguments = Arguments::new(&args);
+    let arguments = Arguments::new(&args).unwrap_or_else(
+        |err| {
+            if err.contains("help") {
+                process::exit(0);
+            } else {
+                eprintln!("{} problem parsing arguments: {}", program, err);
+                process::exit(0);
+            }
+        }
+    );
 }
