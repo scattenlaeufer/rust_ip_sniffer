@@ -1,7 +1,7 @@
 use std::env;
 use std::net::IpAddr;
-use std::str::FromStr;
 use std::process;
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct Arguments {
@@ -56,14 +56,12 @@ impl Arguments {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
-    let arguments = Arguments::new(&args).unwrap_or_else(
-        |err| {
-            if err.contains("help") {
-                process::exit(0);
-            } else {
-                eprintln!("{} problem parsing arguments: {}", program, err);
-                process::exit(0);
-            }
+    let arguments = Arguments::new(&args).unwrap_or_else(|err| {
+        if err.contains("help") {
+            process::exit(0);
+        } else {
+            eprintln!("{} problem parsing arguments: {}", program, err);
+            process::exit(0);
         }
-    );
+    });
 }
