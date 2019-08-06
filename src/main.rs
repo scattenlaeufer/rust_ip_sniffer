@@ -1,9 +1,11 @@
-use std::env;
+extern crate argparse;
+
+use argparse::{ArgumentParser, Store};
 use std::io::{self, Write};
 use std::net::{IpAddr, TcpStream};
 use std::process;
 use std::str::FromStr;
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 const MAX: u16 = 65535;
@@ -16,49 +18,20 @@ struct Arguments {
 }
 
 impl Arguments {
-    fn new(args: &[String]) -> Result<Arguments, &'static str> {
-        if args.len() < 2 {
-            return Err("not enough arguments");
-        } else if args.len() > 4 {
-            return Err("too many arguments");
-        }
-        let f = args[1].clone();
-        if let Ok(ipaddr) = IpAddr::from_str(&f) {
-            return Ok(Arguments {
-                flag: String::from(""),
-                ipaddr,
-                threads: 4,
-            });
-        } else {
-            let flag = args[1].clone();
-            if flag.contains("-h") || flag.contains("--help") && args.len() == 2 {
-                println!("{:7}-j to select how many threads you want\n{:7}-h or --help to show this help message", "Usage:", "");
-                return Err("help");
-            } else if flag.contains("-h") || flag.contains("--help") {
-                return Err("too many arguments");
-            } else if flag.contains("-j") {
-                // TODO Handle -j with args.len() == 3
-                let ipaddr = match IpAddr::from_str(&args[3]) {
-                    Ok(s) => s,
-                    Err(_) => return Err("not a valid IPADDR; must be IPv4 or IPv6"),
-                };
-                let threads = match args[2].parse::<u16>() {
-                    Ok(s) => s,
-                    Err(_) => return Err("failed to parse thread number"),
-                };
-                return Ok(Arguments {
-                    flag,
-                    ipaddr,
-                    threads,
-                });
-            } else {
-                return Err("invalid syntax");
-            }
-        }
+    fn new(ipaddr: &String, threads: &u16) -> Result<Arguments, &'static str> {
+        let ipaddr = match IpAddr::from_str(&ipaddr) {
+            Ok(addr) => addr,
+            Err(_) => return Err("Not a valid IPADDR; must be IPv4 or IPv6"),
+        };
+        return Ok(Arguments {
+            flag: String::from(""),
+            ipaddr,
+            threads: *threads,
+        });
     }
 }
 
-fn scan(tx: Sender<u16>, start_port: u16, addr:IpAddr, num_threads: u16){
+fn scan(tx: Sender<u16>, start_port: u16, addr: IpAddr, num_threads: u16) {
     let mut port: u16 = start_port + 1;
     loop {
         match TcpStream::connect((addr, port)) {
@@ -77,15 +50,21 @@ fn scan(tx: Sender<u16>, start_port: u16, addr:IpAddr, num_threads: u16){
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
-    let arguments = Arguments::new(&args).unwrap_or_else(|err| {
-        if err.contains("help") {
-            process::exit(0);
-        } else {
-            eprintln!("{} problem parsing arguments: {}", program, err);
-            process::exit(0);
-        }
+    let mut ipaddr = "".to_string();
+    let mut threads: u16 = 4;
+    {
+        let mut ap = ArgumentParser::new();
+        ap.set_description("A small ip sniffer written in Rust.");
+        ap.refer(&mut threads)
+            .add_option(&["-j", "--threads"], Store, "Number of threads to run");
+        ap.refer(&mut ipaddr)
+            .add_argument("IPADDR", Store, "IP address to sniff")
+            .required();
+        ap.parse_args_or_exit();
+    }
+    let arguments = Arguments::new(&ipaddr, &threads).unwrap_or_else(|err| {
+        println!("{}", err);
+        process::exit(0);
     });
 
     let num_threads = arguments.threads;
