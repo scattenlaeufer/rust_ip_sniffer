@@ -12,7 +12,6 @@ const MAX: u16 = 65535;
 
 #[derive(Debug)]
 struct Arguments {
-    flag: String,
     ipaddr: IpAddr,
     threads: u16,
 }
@@ -24,7 +23,6 @@ impl Arguments {
             Err(_) => return Err("Not a valid IPADDR; must be IPv4 or IPv6"),
         };
         return Ok(Arguments {
-            flag: String::from(""),
             ipaddr,
             threads: *threads,
         });
